@@ -15,14 +15,15 @@ divisions, backed by an Express API and an admin dashboard for handling consulta
 
 ## Project layout
 
-This is two apps in one repo:
+This is a monorepo with three main areas:
 
 ```
-/                 the frontend (this README)
-/backend          the Express API — see backend/README.md
+/              Root configuration and shared files
+/frontend      React + Vite frontend application
+/backend       Express API — see backend/README.md
 ```
 
-They run as two separate processes, talking over HTTP.
+The frontend and backend run as two separate processes, talking over HTTP.
 
 ## Getting started (both apps)
 
@@ -36,6 +37,7 @@ npm run hash-password -- "choose-a-strong-password"   # paste result into .env a
 npm run dev            # starts on http://localhost:4000
 
 # 2. Frontend (separate terminal, from the repo root)
+cd frontend
 npm install
 cp .env.example .env    # VITE_API_URL defaults to http://localhost:4000, adjust if needed
 npm run dev             # starts on http://localhost:5173
@@ -47,50 +49,59 @@ password you hashed above.
 Build for production:
 
 ```bash
+cd frontend
 npm run build
 npm run preview
 ```
 
-## Structure
+## Frontend Structure
 
 ```
-src/
-  App.tsx                   Router setup: public layout (Home/DigitizeBiz/CitizenEase) + /admin
-  components/
-    Nav.tsx                  Top nav + division links + theme toggle
-    Footer.tsx                Shared footer (includes a discreet Admin link)
-    PublicLayout.tsx          Wraps the three public pages with Nav + Footer
-    ui.tsx                    Shared primitives: Btn, Card, Pill, Eyebrow, cn
-    ContactBlock.tsx          Consultation form — POSTs to the backend, shows loading/success/error
-    DigitizationPreview.tsx   DigitizeBiz signature tool — draggable ledger → dashboard slider
-    ROICalculator.tsx         DigitizeBiz signature tool — monthly value-recovered calculator
-    DocumentChecklist.tsx     CitizenEase signature tool — required-documents checklist per service
-    theme-provider.tsx        next-themes wrapper (light/dark)
-  pages/
-    Home.tsx                  Skywalkers Ltd homepage — links into the two divisions
-    DigitizeBiz.tsx            Division A page
-    CitizenEase.tsx            Division B page
-    AdminPage.tsx               /admin — renders AdminLogin or AdminDashboard based on auth state
-    AdminLogin.tsx               Password sign-in form
-    AdminDashboard.tsx           Consultations table: filter, update status, delete
-  lib/
-    api.ts                     Typed fetch client for the backend
-    auth.tsx                   Admin auth context (JWT kept in localStorage)
-  data/
-    services.ts                 DigitizeBiz service list + CitizenEase categories/documents
+frontend/
+  index.html                   Entry point
+  src/
+    App.tsx                    Router setup: public layout (Home/DigitizeBiz/CitizenEase) + /admin
+    main.tsx                   React entry point
+    components/
+      Nav.tsx                  Top nav + division links + theme toggle
+      Footer.tsx              Shared footer (includes a discreet Admin link)
+      PublicLayout.tsx         Wraps the three public pages with Nav + Footer
+      ui.tsx                   Shared primitives: Btn, Card, Pill, Eyebrow, cn
+      ContactBlock.tsx         Consultation form — POSTs to the backend, shows loading/success/error
+      DigitizationPreview.tsx  DigitizeBiz signature tool — draggable ledger → dashboard slider
+      ROICalculator.tsx        DigitizeBiz signature tool — monthly value-recovered calculator
+      DocumentChecklist.tsx    CitizenEase signature tool — required-documents checklist per service
+      theme-provider.tsx       next-themes wrapper (light/dark)
+    pages/
+      Home.tsx                 Skywalkers Ltd homepage — links into the two divisions
+      DigitizeBiz.tsx          Division A page
+      CitizenEase.tsx          Division B page
+      AdminPage.tsx            /admin — renders AdminLogin or AdminDashboard based on auth state
+      AdminLogin.tsx           Password sign-in form
+      AdminDashboard.tsx       Consultations table: filter, update status, delete
+    lib/
+      api.ts                   Typed fetch client for the backend
+      auth.tsx                 Admin auth context (JWT kept in localStorage)
+    data/
+      services.ts              DigitizeBiz service list + CitizenEase categories/documents
+```
 
+## Backend Structure
+
+See `backend/README.md` for full backend documentation.
+
+```
 backend/
-  src/app.ts                    Express app factory (routes/middleware — no .listen())
-  src/server.ts                 Standalone entry: createApp() + .listen() — for Render/local/any plain Node host
-  src/routes/                   auth.ts (login), consultations.ts (public create + admin CRUD)
-  src/middleware/                auth.ts (JWT guard), errorHandler.ts
-  src/lib/store.ts               Picks fileStore or kvStore automatically based on env vars present
-  src/lib/fileStore.ts           JSON-file backed store — Render/local/any host with persistent disk
-  src/lib/kvStore.ts             Upstash Redis backed store — used automatically on Vercel
-  src/lib/hashPassword.ts        CLI helper to generate ADMIN_PASSWORD_HASH
-
-api/
-  [...path].ts                  Vercel serverless entry point — reuses createApp() from backend/src/app.ts
+  src/
+    app.ts                     Express app factory (routes/middleware — no .listen())
+    server.ts                  Standalone entry: createApp() + .listen() — for Render/local/any plain Node host
+    routes/                    auth.ts (login), consultations.ts (public create + admin CRUD)
+    middleware/                auth.ts (JWT guard), errorHandler.ts
+    lib/
+      store.ts                 Picks fileStore or kvStore automatically based on env vars present
+      fileStore.ts             JSON-file backed store — Render/local/any host with persistent disk
+      kvStore.ts               Upstash Redis backed store — used automatically on Vercel
+      hashPassword.ts          CLI helper to generate ADMIN_PASSWORD_HASH
 ```
 
 ## Design system
@@ -98,7 +109,7 @@ api/
 - **Palette**: ink navy (`#16233A`), warm paper (`#F4F1EA`), signal teal (`#1F7A6C`), terracotta
   clay (`#B4552F`) — teal is DigitizeBiz's accent, clay is CitizenEase's accent, so the two
   divisions stay visually distinct while sharing the same masterbrand shell.
-- **Typography**: Fraunces (display) + Inter (body), loaded via Google Fonts in `index.html`.
+- **Typography**: Fraunces (display) + Inter (body), loaded via Google Fonts in `frontend/index.html`.
 - **Dark mode**: via `next-themes`, toggled from the nav.
 
 ## Deploying to Render
@@ -146,7 +157,7 @@ If you'd rather click through the dashboard instead of using `render.yaml`:
    `npm install && npm run build`, start command `npm start`, health check path `/api/health`. Add a
    disk (Advanced → Add Disk) mounted at `/opt/render/project/src/backend/data`. Set
    `ADMIN_PASSWORD_HASH` and `JWT_SECRET` under Environment (leave `FRONTEND_ORIGIN` for step 3).
-2. **New → Static Site** → connect the repo → Root Directory `.` (repo root), build command
+2. **New → Static Site** → connect the repo → Root Directory `frontend`, build command
    `npm install && npm run build`, publish directory `dist`. Add a rewrite rule `/*` → `/index.html` so
    client-side routes like `/admin` work on refresh (the included `public/_redirects` covers this
    automatically on Render and Netlify alike).
@@ -236,18 +247,18 @@ the frontend, the backend, and the `api/` serverless entry point:
 - Backend relative imports checked for the `.js` extension required by `NodeNext` module
   resolution
 - `robots.txt` (`Allow: /`) checked for consistency with the `index,follow` meta tag in
-  `index.html`
+  `frontend/index.html`
 - Tailwind color utility classes (`bg-ink-soft`, `text-teal`, `border-clay`, `bg-card-dark`, etc.)
-  checked against the nested color tokens defined in `tailwind.config.ts`
+  checked against the nested color tokens defined in `frontend/tailwind.config.ts`
 
-Before deploying, run `npm install && npm run build` locally (or in CI) for both `/` and
+Before deploying, run `npm install && npm run build` locally (or in CI) in both `/frontend` and
 `/backend` to catch anything a static read-through can't — type errors, resolution issues, etc.
 
 **No lockfiles are committed** (`package-lock.json`), for the same reason — they're generated by
 `npm install`, which couldn't run here. `render.yaml` and the manual setup steps above use
 `npm install` rather than `npm ci` for this reason: `npm ci` requires a lockfile that matches
 `package.json` exactly and fails immediately if one isn't present. Once you've run
-`npm install` locally for both `/` and `/backend` and committed the resulting
+`npm install` locally in both `/frontend` and `/backend` and committed the resulting
 `package-lock.json` files, you can switch either build command back to `npm ci` for faster,
 more reproducible installs — just keep the lockfile in sync with `package.json` after that (delete
 and regenerate it if `EUSAGE` reappears after editing dependencies by hand).
@@ -259,4 +270,3 @@ and regenerate it if `EUSAGE` reappears after editing dependencies by hand).
   Skywalkers Ltd strategy document) is finalized.
 - Optional backend extensions: email/SMS notification on new consultation, CSV export from the
   admin dashboard, multi-admin accounts if more than one person needs access.
-
